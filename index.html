@@ -1,3 +1,4 @@
+<!-- VERSION: 2026-06-08 14:12 | FEATURES: Ladescreen + Bewertung -->
 <!-- Version: 2026-06-08 12:45 -->
 <!DOCTYPE html>
 <html lang="de">
@@ -164,7 +165,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--t
 </div>
 
 <!-- LANDING -->
-<div id="landing" class="screen active">
+<div id="landing" class="screen">
   <div class="land-logo">★</div>
   <div class="land-title">Juz Amma</div>
   <div class="land-ar">جزء عمّ</div>
@@ -603,7 +604,7 @@ auth.onAuthStateChanged(async function(user){
 
   if(!user){
     isRegistering = false;
-    showScreen('landing');
+    showScreen('landing'); // Erst jetzt Landing zeigen
     return;
   }
   currentUser = user;
