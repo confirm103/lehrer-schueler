@@ -1304,12 +1304,40 @@ function showVerseDetails(container,surahId,verseDone,totalV,learnedVerses){
 }
 
 
+// ── Alle Fortschritts-Dokumente einer HW löschen/bereinigen ──
+async function cleanupFortschritt(hwId,removeSurahId){
+  // Finde alle fortschritt-Dokumente dieser Hausaufgabe
+  var snap=await DB.collection('fortschritt').where('hwId','==',hwId).get().catch(function(){return{empty:true,docs:[]};});
+  if(snap.empty) return;
+  var batch=DB.batch();
+  snap.docs.forEach(function(doc){
+    if(removeSurahId){
+      // Nur diese Sure aus den Arrays entfernen
+      var d=doc.data();
+      var ls=(d.learnedSurahs||[]).filter(function(id){return id!==removeSurahId;});
+      var cs=(d.confirmedSurahs||[]).filter(function(id){return id!==removeSurahId;});
+      var vp=d.verseProgress||{};
+      delete vp[removeSurahId];
+      var lv=ls.reduce(function(s,id){var sr=sbid(id);return s+(sr?sr.v:0);},0);
+      batch.update(doc.ref,{learnedSurahs:ls,confirmedSurahs:cs,verseProgress:vp,learnedCount:lv});
+    } else {
+      // Ganzes Dokument löschen
+      batch.delete(doc.ref);
+    }
+  });
+  await batch.commit();
+}
+
 // ── Hausaufgabe löschen ──
 async function deleteHW(hwId,klassId,studentId){
-  if(!confirm('Hausaufgabe wirklich löschen?')) return;
+  if(!confirm('Hausaufgabe löschen? Alle Schüler-Fortschritte werden ebenfalls entfernt.')) return;
   try{
+    dtoast('⏳ Wird gelöscht...');
+    // 1) Fortschritts-Dokumente löschen
+    await cleanupFortschritt(hwId,null);
+    // 2) Hausaufgabe löschen
     await DB.collection('hausaufgaben').doc(hwId).delete();
-    dtoast('🗑️ Hausaufgabe gelöscht');
+    dtoast('🗑️ Hausaufgabe + Fortschritte gelöscht');
     document.getElementById('detOverlay').classList.remove('on');
     if(studentId) openStudentDetail(studentId,'',klassId);
     else openKl(klassId);
@@ -1318,20 +1346,25 @@ async function deleteHW(hwId,klassId,studentId){
 
 // ── Sure aus Hausaufgabe entfernen ──
 async function removeSurahFromHW(hwId,surahId,klassId,studentId){
+  var s=sbid(surahId);
+  if(!confirm('Sure '+(s?s.de:surahId)+' entfernen? Der Fortschritt der Schüler für diese Sure wird gelöscht.')) return;
   try{
+    dtoast('⏳ Wird entfernt...');
     var doc=await DB.collection('hausaufgaben').doc(hwId).get();
     if(!doc.exists) return;
     var ids=(doc.data().surahIds||[]).filter(function(id){return id!==surahId;});
+    // 1) Fortschritt für diese Sure aus allen Schüler-Dokumenten entfernen
+    await cleanupFortschritt(hwId,surahId);
     if(ids.length===0){
-      if(!confirm('Das war die letzte Sure. Hausaufgabe komplett löschen?')) return;
+      // Letzte Sure → ganze Hausaufgabe löschen
       await DB.collection('hausaufgaben').doc(hwId).delete();
-      dtoast('🗑️ Hausaufgabe gelöscht');
+      dtoast('🗑️ Letzte Sure entfernt – Hausaufgabe gelöscht');
       document.getElementById('detOverlay').classList.remove('on');
       if(studentId) openStudentDetail(studentId,'',klassId);
       else openKl(klassId);
     } else {
       await DB.collection('hausaufgaben').doc(hwId).update({surahIds:ids});
-      dtoast('✅ Sure entfernt');
+      dtoast('✅ Sure entfernt + Fortschritte bereinigt');
       openHWP(hwId,klassId);
     }
   }catch(e){dtoast('❌ '+e.message);}
