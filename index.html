@@ -35,8 +35,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Segoe UI
   display:flex;align-items:center;justify-content:center}
 .stars-badge::before{content:"★";color:var(--gd);font-size:48px;
   text-shadow:0 2px 8px rgba(0,0,0,.3)}
-.stars-badge span{position:absolute;top:46%;left:50%;
-  transform:translate(-50%,-50%);font-size:14px;font-weight:900;color:var(--nv)}
+.stars-badge span{position:absolute;top:54%;left:50%;
+  transform:translate(-50%,-50%);font-size:13px;font-weight:900;color:var(--nv)}
 .hdr-title{font-size:30px;font-weight:900;color:#fff;letter-spacing:.3px;
   text-shadow:0 2px 8px rgba(0,0,0,.2)}
 .hdr-ar{font-family:serif;font-size:26px;color:var(--gd);direction:rtl;
@@ -293,7 +293,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Segoe UI
 .erow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd)}
 .erow:last-child{border:none}
 .edot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.edot.empty{background:#c8d8e8}.edot.done{background:var(--g2)}.edot.conf{background:var(--gd)}
+.edot.empty{background:#c8d8e8}.edot.done{background:var(--g2)}.edot.conf{background:var(--gd)}.edot.partial{background:var(--og)}
 .ear{font-family:serif;font-size:18px;color:var(--g);direction:rtl;font-weight:700;flex:1}
 .ede{font-size:11px;color:var(--dim);font-weight:600}
 .cbtn{height:32px;padding:0 12px;border-radius:14px;border:none;cursor:pointer;
@@ -315,6 +315,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Segoe UI
   font-size:14px;font-weight:700;z-index:999;opacity:0;transition:.3s;
   white-space:nowrap;pointer-events:none}
 #dtoast.on{opacity:1}
+.del-btn{background:rgba(224,48,64,.1);border:none;border-radius:8px;cursor:pointer;font-size:15px;padding:4px 8px;transition:.15s;flex-shrink:0}
+.del-btn:active{transform:scale(.9)}
+
 </style>
 </head>
 <body>
@@ -364,7 +367,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Segoe UI
       <span id="markCount"></span>
     </div>
   </div>
-  <button id="surahDoneBtn" class="surah-done-btn">Ich kann es! &#x2B50;</button>
+  <button id="surahDoneBtn" class="surah-done-btn" onclick="toggleSurahLearned()">Ich kann es! &#x2B50;</button>
   <div id="versesList"></div>
 </div>
 
@@ -446,7 +449,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Segoe UI
 
 <div id="mHW" class="mbg" onclick="closeBg(event,'mHW')"><div class="modal">
   <button class="mc" onclick="closeM('mHW')">&#x2715;</button>
-  <h3>&#x1F4DD; Hausaufgabe vergeben</h3>
+  <h3 id="iHWModalTitle">&#x1F4DD; Hausaufgabe vergeben</h3>
   <div class="p-fg"><label class="p-lbl">Titel</label><input class="p-inp" id="iHWT" type="text" placeholder="z.B. Al-Ikhlas lernen"></div>
   <div class="p-fg"><label class="p-lbl">Deadline</label><input class="p-inp" id="iHWD" type="date"></div>
   <div class="p-fg"><label class="p-lbl">Suren ausw&#xE4;hlen</label><div id="picker" class="pick"></div></div>
@@ -822,81 +825,724 @@ if(window.matchMedia('(display-mode:standalone)').matches||window.navigator.stan
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script>
-
-
 var FC={apiKey:"AIzaSyC5zJCBjatYold3h5Z5H9SzMMW1LHdk4l4",authDomain:"koran-hifz-kinder.firebaseapp.com",projectId:"koran-hifz-kinder",storageBucket:"koran-hifz-kinder.firebasestorage.app",messagingSenderId:"949973832464",appId:"1:949973832464:web:d2361e76c1e92279198b95"};
 firebase.initializeApp(FC);
 var FA=firebase.auth(),DB=firebase.firestore(),FS=firebase.firestore.FieldValue;
+
+// ── SURAH-DATEN (aus app_raw.js SURAHS global) ──
 var SURAHS_DB=[{id:1,ar:"سورة الفاتحة",de:"Al-Fatiha",v:7},{id:114,ar:"سورة الناس",de:"An-Nas",v:6},{id:113,ar:"سورة الفلق",de:"Al-Falaq",v:5},{id:112,ar:"سورة الإخلاص",de:"Al-Ikhlas",v:4},{id:111,ar:"سورة المسد",de:"Al-Masad",v:5},{id:110,ar:"سورة النصر",de:"An-Nasr",v:3},{id:109,ar:"سورة الكافرون",de:"Al-Kafirun",v:6},{id:108,ar:"سورة الكوثر",de:"Al-Kawthar",v:3},{id:107,ar:"سورة الماعون",de:"Al-Ma'un",v:7},{id:106,ar:"سورة قريش",de:"Quraysh",v:4},{id:105,ar:"سورة الفيل",de:"Al-Fil",v:5},{id:104,ar:"سورة الهمزة",de:"Al-Humaza",v:9},{id:103,ar:"سورة العصر",de:"Al-Asr",v:3},{id:102,ar:"سورة التكاثر",de:"At-Takathur",v:8},{id:101,ar:"سورة القارعة",de:"Al-Qari'a",v:11},{id:100,ar:"سورة العاديات",de:"Al-Adiyat",v:11},{id:99,ar:"سورة الزلزلة",de:"Az-Zalzala",v:8},{id:98,ar:"سورة البينة",de:"Al-Bayyina",v:8},{id:97,ar:"سورة القدر",de:"Al-Qadr",v:5},{id:96,ar:"سورة العلق",de:"Al-Alaq",v:19},{id:95,ar:"سورة التين",de:"At-Tin",v:8},{id:94,ar:"سورة الشرح",de:"Ash-Sharh",v:8},{id:93,ar:"سورة الضحى",de:"Ad-Duha",v:11},{id:92,ar:"سورة الليل",de:"Al-Layl",v:21},{id:91,ar:"سورة الشمس",de:"Ash-Shams",v:15},{id:90,ar:"سورة البلد",de:"Al-Balad",v:20},{id:89,ar:"سورة الفجر",de:"Al-Fajr",v:30},{id:88,ar:"سورة الغاشية",de:"Al-Ghashiya",v:26},{id:87,ar:"سورة الأعلى",de:"Al-A'la",v:19},{id:86,ar:"سورة الطارق",de:"At-Tariq",v:17},{id:85,ar:"سورة البروج",de:"Al-Buruj",v:22},{id:84,ar:"سورة الانشقاق",de:"Al-Inshiqaq",v:25},{id:83,ar:"سورة المطففين",de:"Al-Mutaffifin",v:36},{id:82,ar:"سورة الانفطار",de:"Al-Infitar",v:19},{id:81,ar:"سورة التكوير",de:"At-Takwir",v:29},{id:80,ar:"سورة عبس",de:"Abasa",v:42},{id:79,ar:"سورة النازعات",de:"An-Nazi'at",v:46},{id:78,ar:"سورة النبأ",de:"An-Naba",v:40}];
-var CU=null,CR=null,isReg=false,selS=[],curKlass=null;
-function sbid(id){return SURAHS_DB.find(function(s){return s.id===id})}
+
+// ── STATE ──
+var CU=null,CR=null,isReg=false,selS=[],curKlass=null,curStudent=null;
+
+// ── UTILS ──
+function sbid(id){return SURAHS_DB.find(function(s){return s.id===id;})}
 function gc(){return Math.random().toString(36).substring(2,8).toUpperCase()}
 function dldr(){return '<div class="dldr"><div class="spin"></div><span>Laden...</span></div>'}
-function dtoast(m){var t=document.getElementById('dtoast');t.textContent=m;t.classList.add('on');setTimeout(function(){t.classList.remove('on')},3000)}
-function deadlineLabel(ts){if(!ts)return'';var d=ts.toDate?ts.toDate():new Date(ts);var diff=Math.ceil((d-new Date())/86400000);if(diff<0)return'<span class="dlb over">⏰ Abgelaufen</span>';if(diff<=3)return'<span class="dlb warn">⚠️ '+diff+' Tag(e)</span>';return'<span class="dlb ok">📅 '+d.toLocaleDateString('de-DE')+'</span>'}
-function mke(cls){var d=document.createElement('div');if(cls)d.className=cls;return d}
-function addSec(el,t){var s=mke('d-sec');s.textContent=t;el.appendChild(s)}
-function addNote(el,t){var n=mke('');n.style.cssText='text-align:center;color:var(--dim);padding:10px;font-size:13px';n.textContent=t;el.appendChild(n)}
-function addSp(el){var s=mke('sp');el.appendChild(s)}
-function openM(id){document.getElementById(id).classList.add('on')}
-function closeM(id){document.getElementById(id).classList.remove('on')}
-function closeBg(e,id){if(e.target===e.currentTarget)closeM(id)}
-function openDet(title,sub,backFn){document.getElementById('detTitle').textContent=title;document.getElementById('detSub').textContent=sub||'';document.getElementById('detContent').innerHTML=dldr();document.getElementById('detBack').onclick=backFn;document.getElementById('detOverlay').classList.add('on')}
+function dtoast(m){var t=document.getElementById('dtoast');t.innerHTML=m;t.classList.add('on');setTimeout(function(){t.classList.remove('on');},3000)}
+function deadlineLabel(ts){
+  if(!ts) return '';
+  var d=ts.toDate?ts.toDate():new Date(ts);
+  var diff=Math.ceil((d-new Date())/86400000);
+  if(diff<0) return '<span class="dlb over">⏰ Abgelaufen</span>';
+  if(diff<=3) return '<span class="dlb warn">⚠️ Noch '+diff+' Tag(e)</span>';
+  return '<span class="dlb ok">📅 '+d.toLocaleDateString('de-DE')+'</span>';
+}
+function isExpired(ts){if(!ts) return false; var d=ts.toDate?ts.toDate():new Date(ts); return new Date()>d;}
+function mke(cls){var d=document.createElement('div');if(cls)d.className=cls;return d;}
+function addSec(el,t,clr){var s=mke('d-sec');s.textContent=t;if(clr)s.style.color=clr;el.appendChild(s);}
+function addNote(el,t){var n=mke('');n.style.cssText='text-align:center;color:var(--dim);padding:10px 14px;font-size:13px';n.textContent=t;el.appendChild(n);}
+function addSp(el){var s=mke('sp');el.appendChild(s);}
+function openM(id){document.getElementById(id).classList.add('on');}
+function closeM(id){document.getElementById(id).classList.remove('on');}
+function closeBg(e,id){if(e.target===e.currentTarget)closeM(id);}
+function openDet(title,sub,backFn){
+  document.getElementById('detTitle').textContent=title;
+  document.getElementById('detSub').textContent=sub||'';
+  document.getElementById('detContent').innerHTML=dldr();
+  document.getElementById('detBack').onclick=backFn;
+  document.getElementById('detOverlay').classList.add('on');
+}
+
+// ── AUTH STATE ──
 FA.onAuthStateChanged(async function(u){
-  if(!u){updateUserBtn(null);return}
+  if(!u){updateUserBtn(null);return;}
   CU=u;
-  if(isReg){var w=0;while(isReg&&w<8000){await new Promise(function(r){setTimeout(r,200)});w+=200}}
-  try{var snap=await DB.collection('users').doc(u.uid).get();if(!snap.exists||snap.data().disabled){await FA.signOut();return}var d=snap.data();CR=d.role;updateUserBtn(d)}catch(e){console.error('Auth:',e)}
+  if(isReg){var w=0;while(isReg&&w<8000){await new Promise(function(r){setTimeout(r,200);});w+=200;}}
+  try{
+    var snap=await DB.collection('users').doc(u.uid).get();
+    if(!snap.exists||snap.data().disabled){await FA.signOut();return;}
+    var d=snap.data();CR=d.role;updateUserBtn(d);
+  }catch(e){console.error('Auth:',e);}
 });
-function updateUserBtn(d){var btn=document.getElementById('userBtn');if(!d){btn.textContent='👤';btn.classList.remove('logged');return}btn.textContent=d.role==='L'?'👨‍🏫':'🎓';btn.classList.add('logged');document.getElementById('uName').textContent=d.name;document.getElementById('uRole').textContent=d.role==='L'?'Lehrer':'Schüler';document.getElementById('puAv').textContent=d.role==='L'?'👨‍🏫':'🎓';showPanelUser()}
-function openUserPanel(){document.getElementById('userPanel').classList.add('on');if(!CU)showGuest();else showPanelUser()}
-function closePanel(){document.getElementById('userPanel').classList.remove('on')}
-function showGuest(){document.getElementById('panelGuest').style.display='block';document.getElementById('panelAuth').classList.remove('on');document.getElementById('panelUser').style.display='none'}
-function showPanelUser(){document.getElementById('panelGuest').style.display='none';document.getElementById('panelAuth').classList.remove('on');document.getElementById('panelUser').style.display='block'}
-function showAuthForm(role){CR=role;document.getElementById('panelGuest').style.display='none';document.getElementById('panelAuth').classList.add('on');setAuthTab('login')}
-function setAuthTab(t){var isR=t==='reg';document.getElementById('tl').className='p-tab'+(isR?'':' on');document.getElementById('tr').className='p-tab'+(isR?' on':'');document.getElementById('fN').style.display=isR?'block':'none';document.getElementById('fTC').style.display=(isR&&CR==='L')?'block':'none';document.getElementById('fCC').style.display=(isR&&CR==='S')?'block':'none';document.getElementById('aBtn').textContent=isR?'Konto erstellen':'Anmelden';document.getElementById('aerr').style.display='none'}
-function showAErr(m){var e=document.getElementById('aerr');e.textContent=m;e.style.display='block'}
+
+function updateUserBtn(d){
+  var btn=document.getElementById('userBtn');
+  if(!d){btn.innerHTML='👤';btn.classList.remove('logged');return;}
+  btn.innerHTML=d.role==='L'?'👨‍🏫':'🎓';
+  btn.classList.add('logged');
+  document.getElementById('uName').textContent=d.name;
+  document.getElementById('uRole').textContent=d.role==='L'?'Lehrer':'Schüler';
+  document.getElementById('puAv').innerHTML=d.role==='L'?'👨‍🏫':'🎓';
+  showPanelUser();
+}
+
+// ── PANEL ──
+function openUserPanel(){document.getElementById('userPanel').classList.add('on');if(!CU)showGuest();else showPanelUser();}
+function closePanel(){document.getElementById('userPanel').classList.remove('on');}
+function showGuest(){document.getElementById('panelGuest').style.display='block';document.getElementById('panelAuth').classList.remove('on');document.getElementById('panelUser').style.display='none';}
+function showPanelUser(){document.getElementById('panelGuest').style.display='none';document.getElementById('panelAuth').classList.remove('on');document.getElementById('panelUser').style.display='block';}
+function showAuthForm(role){CR=role;document.getElementById('panelGuest').style.display='none';document.getElementById('panelAuth').classList.add('on');setAuthTab('login');}
+function setAuthTab(t){
+  var isR=t==='reg';
+  document.getElementById('tl').className='p-tab'+(isR?'':' on');
+  document.getElementById('tr').className='p-tab'+(isR?' on':'');
+  document.getElementById('fN').style.display=isR?'block':'none';
+  document.getElementById('fTC').style.display=(isR&&CR==='L')?'block':'none';
+  document.getElementById('fCC').style.display=(isR&&CR==='S')?'block':'none';
+  document.getElementById('aBtn').textContent=isR?'Konto erstellen':'Anmelden';
+  document.getElementById('aerr').style.display='none';
+}
+function showAErr(m){var e=document.getElementById('aerr');e.innerHTML=m;e.style.display='block';}
+
+// ── AUTH ──
 async function doAuth(){
   var email=document.getElementById('iE').value.trim(),pass=document.getElementById('iP').value;
   var isR=document.getElementById('tr').classList.contains('on'),btn=document.getElementById('aBtn');
   document.getElementById('aerr').style.display='none';
-  if(!email){showAErr('❌ E-Mail fehlt');return}if(!pass){showAErr('❌ Passwort fehlt');return}
+  if(!email){showAErr('❌ E-Mail fehlt');return;}
+  if(!pass){showAErr('❌ Passwort fehlt');return;}
   btn.disabled=true;btn.textContent='Laden...';
   var msgs={'auth/user-not-found':'❌ Kein Konto. Bitte registrieren.','auth/wrong-password':'❌ Falsches Passwort.','auth/email-already-in-use':'❌ E-Mail bereits registriert.','auth/weak-password':'❌ Passwort zu kurz.','auth/invalid-email':'❌ Ungültige E-Mail.','auth/invalid-credential':'❌ E-Mail oder Passwort falsch.','auth/too-many-requests':'❌ Zu viele Versuche.'};
-  function rst(){btn.disabled=false;btn.textContent=isR?'Konto erstellen':'Anmelden'}
-  if(!isR){try{await FA.signInWithEmailAndPassword(email,pass);closePanel()}catch(e){showAErr(msgs[e.code]||'❌ '+e.message);rst()}return}
+  function rst(){btn.disabled=false;btn.textContent=isR?'Konto erstellen':'Anmelden';}
+  if(!isR){try{await FA.signInWithEmailAndPassword(email,pass);closePanel();}catch(e){showAErr(msgs[e.code]||'❌ '+e.message);rst();}return;}
   var name=document.getElementById('iN').value.trim();
-  if(!name){showAErr('❌ Name fehlt');rst();return}
-  if(pass.length<6){showAErr('❌ Passwort zu kurz');rst();return}
-  if(CR==='L'&&!document.getElementById('iTC').value.trim()){showAErr('❌ Zugangscode fehlt');rst();return}
-  if(CR==='S'&&document.getElementById('iCC').value.trim().length<6){showAErr('❌ Klassen-Code (6 Zeichen)');rst();return}
+  if(!name){showAErr('❌ Name fehlt');rst();return;}
+  if(pass.length<6){showAErr('❌ Passwort zu kurz');rst();return;}
+  if(CR==='L'&&!document.getElementById('iTC').value.trim()){showAErr('❌ Zugangscode fehlt');rst();return;}
+  if(CR==='S'&&document.getElementById('iCC').value.trim().length<6){showAErr('❌ Klassen-Code (6 Zeichen)');rst();return;}
   var cred=null;
   try{
     isReg=true;btn.textContent='Account erstellen...';
-    try{cred=await FA.createUserWithEmailAndPassword(email,pass)}catch(e){isReg=false;showAErr(msgs[e.code]||'❌ '+e.message);rst();return}
-    if(CR==='L'){btn.textContent='Code prüfen...';var tc=document.getElementById('iTC').value.trim();try{var cfg=await DB.collection('config').doc('app').get();if(cfg.exists&&cfg.data().teacherCode&&cfg.data().teacherCode!==tc){await cred.user.delete();isReg=false;showAErr('❌ Falscher Zugangscode.');rst();return}}catch(e){console.warn(e)}}
+    try{cred=await FA.createUserWithEmailAndPassword(email,pass);}catch(e){isReg=false;showAErr(msgs[e.code]||'❌ '+e.message);rst();return;}
+    if(CR==='L'){
+      btn.textContent='Code prüfen...';
+      var tc=document.getElementById('iTC').value.trim();
+      try{var cfg=await DB.collection('config').doc('app').get();if(cfg.exists&&cfg.data().teacherCode&&cfg.data().teacherCode!==tc){await cred.user.delete();isReg=false;showAErr('❌ Falscher Zugangscode.');rst();return;}}catch(e){console.warn(e);}
+    }
     var kDoc=null;
-    if(CR==='S'){btn.textContent='Klassen-Code prüfen...';var cc=document.getElementById('iCC').value.trim().toUpperCase();try{var ks=await DB.collection('klassen').where('code','==',cc).limit(1).get();if(ks.empty){await cred.user.delete();isReg=false;showAErr('❌ Code "'+cc+'" nicht gefunden.');rst();return}kDoc=ks.docs[0]}catch(e){await cred.user.delete();isReg=false;showAErr('❌ '+e.message);rst();return}}
+    if(CR==='S'){
+      btn.textContent='Klassen-Code prüfen...';
+      var cc=document.getElementById('iCC').value.trim().toUpperCase();
+      try{var ks=await DB.collection('klassen').where('code','==',cc).limit(1).get();if(ks.empty){await cred.user.delete();isReg=false;showAErr('❌ Code "'+cc+'" nicht gefunden.');rst();return;}kDoc=ks.docs[0];}
+      catch(e){await cred.user.delete();isReg=false;showAErr('❌ '+e.message);rst();return;}
+    }
     btn.textContent='Profil speichern...';
-    try{await DB.collection('users').doc(cred.user.uid).set({name:name,email:email,role:CR,disabled:false,createdAt:FS.serverTimestamp()})}catch(e){await cred.user.delete();isReg=false;showAErr('❌ Profil-Fehler: '+e.message);rst();return}
-    if(CR==='S'&&kDoc){btn.textContent='Klasse beitreten...';var md={studentId:cred.user.uid,name:name,email:email,klassId:kDoc.id,klassName:kDoc.data().name,joinedAt:FS.serverTimestamp()};try{await Promise.all([DB.collection('memberships').doc(cred.user.uid+'_'+kDoc.id).set(md),DB.collection('klassen').doc(kDoc.id).collection('members').doc(cred.user.uid).set(md)])}catch(e){console.warn(e)}}
+    try{await DB.collection('users').doc(cred.user.uid).set({name:name,email:email,role:CR,disabled:false,createdAt:FS.serverTimestamp()});}
+    catch(e){await cred.user.delete();isReg=false;showAErr('❌ Profil-Fehler: '+e.message);rst();return;}
+    if(CR==='S'&&kDoc){
+      btn.textContent='Klasse beitreten...';
+      var md={studentId:cred.user.uid,name:name,email:email,klassId:kDoc.id,klassName:kDoc.data().name,joinedAt:FS.serverTimestamp()};
+      try{await Promise.all([DB.collection('memberships').doc(cred.user.uid+'_'+kDoc.id).set(md),DB.collection('klassen').doc(kDoc.id).collection('members').doc(cred.user.uid).set(md)]);}
+      catch(e){console.warn(e);}
+    }
     isReg=false;closePanel();
-  }catch(e){isReg=false;if(cred){try{await cred.user.delete()}catch(_){}}showAErr('❌ '+e.message);rst()}
+  }catch(e){isReg=false;if(cred){try{await cred.user.delete();}catch(_){}}showAErr('❌ '+e.message);rst();}
 }
-function doLogout(){if(confirm('Wirklich abmelden?')){FA.signOut();document.getElementById('dashOverlay').classList.remove('on');document.getElementById('detOverlay').classList.remove('on');closePanel()}}
-function openDash(){closePanel();document.getElementById('dashOverlay').classList.add('on');document.getElementById('doAv').textContent=CR==='L'?'👨‍🏫':'🎓';document.getElementById('doName').textContent=document.getElementById('uName').textContent;document.getElementById('doRole').textContent=CR==='L'?'Lehrer-Dashboard':'Meine Hausaufgaben';document.getElementById('dashFab').style.display=CR==='L'?'flex':'none';if(CR==='L')loadL();else loadS()}
-function closeDash(){document.getElementById('dashOverlay').classList.remove('on')}
-async function loadL(){var el=document.getElementById('dashContent');el.innerHTML=dldr();try{var s=await DB.collection('klassen').where('teacherId','==',CU.uid).get();if(s.empty){el.innerHTML='<div class="dempty"><div class="dei">📚</div><h3>Noch keine Klassen</h3><p>Tippe auf + um eine Klasse zu erstellen.</p></div>';return}el.innerHTML='';addSec(el,'Meine Klassen');s.forEach(function(doc){var d=doc.data(),c=mke('d-card');c.innerHTML='<div class="d-cr"><div class="d-ci g">📚</div><div class="d-cb"><div class="d-ct">'+d.name+'</div><div class="d-cs">Code: <b>'+d.code+'</b></div></div><div class="d-ca">›</div></div>';(function(id){c.onclick=function(){openKl(id)}})(doc.id);el.appendChild(c)});addSp(el)}catch(e){el.innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>'}}
-async function createKl(){var n=document.getElementById('iKN').value.trim();if(!n){dtoast('❌ Name eingeben!');return}try{await DB.collection('klassen').add({name:n,code:gc(),teacherId:CU.uid,createdAt:FS.serverTimestamp()});document.getElementById('iKN').value='';closeM('mKl');dtoast('✅ Klasse erstellt!');loadL()}catch(e){dtoast('❌ '+e.message)}}
-async function openKl(id){curKlass=id;openDet('Laden...','Klasse',function(){document.getElementById('detOverlay').classList.remove('on')});try{var kd=await DB.collection('klassen').doc(id).get();if(!kd.exists){dtoast('Nicht gefunden!');return}var k=kd.data();var res=await Promise.all([DB.collection('hausaufgaben').where('klassId','==',id).get(),DB.collection('klassen').doc(id).collection('members').get()]);var hwSnap=res[0],memSnap=res[1];var el=document.getElementById('detContent');el.innerHTML='';var cb=mke('codebox');cb.innerHTML='<div class="codelbl">Einladungscode für Schüler</div><div class="codeval">'+k.code+'</div><div class="codehint">Schüler geben diesen Code beim Registrieren ein</div>';el.appendChild(cb);addSec(el,'👥 Schüler ('+memSnap.size+')');if(memSnap.empty){addNote(el,'Noch keine Schüler')}else{memSnap.forEach(function(m){var md=m.data();var c=mke('d-card');c.innerHTML='<div class="d-cr"><div class="d-ci nv">🎓</div><div class="d-cb"><div class="d-ct">'+md.name+'</div><div class="d-cs">'+(md.email||'')+'</div></div></div>';el.appendChild(c)})}addSec(el,'📝 Hausaufgaben');var ab=mke('');ab.style.padding='0 14px 8px';var abtn=document.createElement('button');abtn.className='p-btn';abtn.style.marginTop='0';abtn.textContent='+ Hausaufgabe vergeben';abtn.onclick=openHWModal;ab.appendChild(abtn);el.appendChild(ab);var hws=[];hwSnap.forEach(function(d){hws.push(d)});hws.sort(function(a,b){return(b.data().createdAt&&b.data().createdAt.seconds||0)-(a.data().createdAt&&a.data().createdAt.seconds||0)});if(!hws.length){addNote(el,'Noch keine Hausaufgaben')}else{hws.forEach(function(doc){var d=doc.data(),names=(d.surahIds||[]).map(function(x){var s=sbid(x);return s?s.de:x}).join(', ');var c=mke('d-card');c.innerHTML='<div class="d-cr"><div class="d-ci gd">📝</div><div class="d-cb"><div class="d-ct">'+d.title+'</div><div class="d-cs">'+names+'</div><div style="margin-top:4px">'+deadlineLabel(d.deadline)+'</div></div><div class="d-ca">›</div></div>';(function(did,kid){c.onclick=function(){openHWP(did,kid)}})(doc.id,id);el.appendChild(c)})}addSp(el);document.getElementById('detTitle').textContent=k.name;document.getElementById('detSub').textContent='Klasse'}catch(e){document.getElementById('detContent').innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>'}}
-function openHWModal(){selS=[];var p=document.getElementById('picker');p.innerHTML='';SURAHS_DB.forEach(function(s){var d=document.createElement('div');d.className='pi';d.innerHTML='<span class="pi-ar">'+s.ar+'</span><span class="pi-de">'+s.id+'. '+s.de+'</span>';(function(id,el){d.onclick=function(){var i=selS.indexOf(id);if(i>=0){selS.splice(i,1);el.classList.remove('on')}else{selS.push(id);el.classList.add('on')}}})(s.id,d);p.appendChild(d)});var dl=new Date();dl.setDate(dl.getDate()+7);document.getElementById('iHWD').value=dl.toISOString().split('T')[0];document.getElementById('iHWT').value='';openM('mHW')}
-async function createHW(){var t=document.getElementById('iHWT').value.trim(),dv=document.getElementById('iHWD').value;if(!t){dtoast('❌ Titel!');return}if(!selS.length){dtoast('❌ Sure auswählen!');return}if(!dv){dtoast('❌ Deadline!');return}try{await DB.collection('hausaufgaben').add({title:t,klassId:curKlass,teacherId:CU.uid,surahIds:selS,deadline:firebase.firestore.Timestamp.fromDate(new Date(dv)),createdAt:FS.serverTimestamp()});closeM('mHW');dtoast('✅ Hausaufgabe vergeben!');openKl(curKlass)}catch(e){dtoast('❌ '+e.message)}}
-async function openHWP(hwId,klassId){openDet('Laden...','Fortschritt',function(){openKl(klassId)});try{var res=await Promise.all([DB.collection('hausaufgaben').doc(hwId).get(),DB.collection('klassen').doc(klassId).collection('members').get(),DB.collection('fortschritt').where('hwId','==',hwId).get()]);var hw=res[0],mem=res[1],prog=res[2];var h=hw.data(),tv=(h.surahIds||[]).reduce(function(s,id){var sr=sbid(id);return s+(sr?sr.v:0)},0);var pm={};prog.forEach(function(d){pm[d.data().studentId]=d.data()});var el=document.getElementById('detContent');el.innerHTML='';var dl2=mke('');dl2.style.padding='10px 14px 4px';dl2.innerHTML=deadlineLabel(h.deadline);el.appendChild(dl2);addSec(el,'👥 Schüler (antippen = Bewertung)');var tbl=mke('ptbl');tbl.innerHTML='<div class="pr hd"><div class="pn">Name</div><div class="pbw">Fortschritt</div><div class="pv">Verse</div></div>';if(mem.empty){tbl.innerHTML+='<div class="pr"><div class="pn" style="color:var(--dim)">Keine Schüler</div></div>'}else{mem.forEach(function(m){var md=m.data(),p=pm[m.id],done=p?(p.learnedCount||0):0,conf=p?((p.confirmedSurahs||[]).length):0;var pct=tv>0?Math.round(done/tv*100):0,col=pct>=100?'var(--g2)':pct>=50?'var(--gd)':'#d0e0f0';var row=mke('pr');row.innerHTML='<div class="pn">'+md.name+'<br><span style="font-size:10px;color:var(--dim);font-weight:600">'+conf+' bestätigt</span></div><div class="pbw"><div class="pw"><div class="pf" style="width:'+pct+'%;background:'+col+'"></div></div></div><div class="pv">'+done+'/'+tv+'</div>';(function(sid,sname,hid,hdata){row.onclick=function(){openEval(sid,sname,hid,hdata)}})(m.id,md.name,hwId,h);tbl.appendChild(row)})}el.appendChild(tbl);addSp(el);document.getElementById('detTitle').textContent=h.title;document.getElementById('detSub').textContent='Hausaufgabe · Fortschritt'}catch(e){document.getElementById('detContent').innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>'}}
-async function openEval(sid,sname,hwId,hw){var el=document.getElementById('detContent');el.innerHTML=dldr();document.getElementById('detTitle').textContent=sname;document.getElementById('detSub').textContent='Bewertung';try{var pd=await DB.collection('fortschritt').doc(sid+'_'+hwId).get();var p=pd.exists?pd.data():{learnedSurahs:[],confirmedSurahs:[]};var ls=p.learnedSurahs||[],cs=p.confirmedSurahs||[];el.innerHTML='';var info=mke('ecard');info.innerHTML='<div style="display:flex;align-items:center;gap:10px"><div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#4a7fc1,var(--nv));color:#fff;font-size:19px;display:flex;align-items:center;justify-content:center">🎓</div><div><div style="font-weight:800;font-size:15px">'+sname+'</div><div style="font-size:12px;color:var(--dim)">'+ls.length+' gelernt · '+cs.length+' bestätigt</div></div></div>';el.appendChild(info);addSec(el,'Suren bewerten');var card=mke('ecard');(hw.surahIds||[]).forEach(function(sid2){var s=sbid(sid2);if(!s)return;var isL=ls.indexOf(sid2)>=0,isC=cs.indexOf(sid2)>=0;var row=mke('erow');var dot=document.createElement('div');dot.className='edot '+(isC?'conf':isL?'done':'empty');row.appendChild(dot);var info2=mke('');info2.style.flex='1';info2.innerHTML='<div class="ear">'+s.ar+'</div><div class="ede">'+s.id+'. '+s.de+' · '+s.v+' Verse</div>';row.appendChild(info2);var btn=document.createElement('button');btn.className='cbtn'+(isC?' conf':'');btn.textContent=isC?'✓ Bestätigt':(isL?'Bestätigen':'Nicht gelernt');if(!isL&&!isC)btn.disabled=true;(function(sid3,b,dt){b.onclick=async function(){b.disabled=true;b.textContent='...';try{var ref=DB.collection('fortschritt').doc(sid+'_'+hwId);var d2=await ref.get();var p2=d2.exists?d2.data():{};var cs2=p2.confirmedSurahs||[];var i=cs2.indexOf(sid3);if(i>=0){cs2.splice(i,1);b.className='cbtn';b.textContent='Bestätigen';dt.className='edot done'}else{cs2.push(sid3);b.className='cbtn conf';b.textContent='✓ Bestätigt';dt.className='edot conf'}await ref.set({confirmedSurahs:cs2,confirmedBy:CU.uid,confirmedAt:FS.serverTimestamp()},{merge:true});dtoast(cs2.indexOf(sid3)>=0?'✅ Bestätigt!':'Aufgehoben')}catch(e){dtoast('❌ '+e.message)}b.disabled=false}})(sid2,btn,dot);row.appendChild(btn);card.appendChild(row)});el.appendChild(card);addSp(el)}catch(e){document.getElementById('detContent').innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>'}}
-async function loadS(){var el=document.getElementById('dashContent');el.innerHTML=dldr();try{var ms=await DB.collection('memberships').where('studentId','==',CU.uid).get();if(ms.empty){el.innerHTML='<div class="dempty"><div class="dei">📭</div><h3>Noch keine Klasse</h3><p>Bitte mit dem Klassen-Code deines Lehrers registrieren.</p></div>';return}el.innerHTML='';var ids=ms.docs.map(function(d){return d.data().klassId});for(var i=0;i<ids.length;i++){var kd=await DB.collection('klassen').doc(ids[i]).get();if(!kd.exists)continue;var k=kd.data();addSec(el,'📚 '+k.name);var hw=await DB.collection('hausaufgaben').where('klassId','==',ids[i]).get();if(hw.empty){addNote(el,'Noch keine Hausaufgaben')}else{hw.forEach(function(doc){var d=doc.data(),names=(d.surahIds||[]).map(function(x){var s=sbid(x);return s?s.de:x}).join(', ');var c=mke('d-card');c.innerHTML='<div class="d-cr"><div class="d-ci gd">📝</div><div class="d-cb"><div class="d-ct">'+d.title+'</div><div class="d-cs">'+names+'</div><div style="margin-top:4px">'+deadlineLabel(d.deadline)+'</div></div><div class="d-ca">›</div></div>';(function(did,kn){c.onclick=function(){openSHW(did,kn)}})(doc.id,k.name);el.appendChild(c)})}}addSp(el)}catch(e){el.innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>'}}
-async function openSHW(hwId,kname){openDet('Laden...',kname,function(){document.getElementById('detOverlay').classList.remove('on')});try{var lsKey='prog_'+CU.uid+'_'+hwId;var res=await Promise.all([DB.collection('hausaufgaben').doc(hwId).get(),DB.collection('fortschritt').doc(CU.uid+'_'+hwId).get().catch(function(){return{exists:false,data:function(){return{}}}})]);var hd=res[0],pd=res[1];if(!hd.exists)return;var h=hd.data();var p=pd.exists?pd.data():JSON.parse(localStorage.getItem(lsKey)||'{"learnedSurahs":[]}');var ls=p.learnedSurahs||[];if(pd.exists)localStorage.setItem(lsKey,JSON.stringify(p));var el=document.getElementById('detContent');el.innerHTML='';var dl2=mke('');dl2.style.padding='10px 14px 4px';dl2.innerHTML=deadlineLabel(h.deadline);el.appendChild(dl2);addSec(el,'Zu lernende Suren');(h.surahIds||[]).forEach(function(sid){var s=sbid(sid);if(!s)return;var done=ls.indexOf(sid)>=0;var card=mke('hw-card');var hdr=mke('hw-hdr');hdr.innerHTML='<div class="hw-num">'+s.id+'</div><div style="flex:1"><div class="hw-ar">'+s.ar+'</div><div class="hw-de">'+s.de+' · '+s.v+' Verse</div></div>'+(done?'<span class="badge-g">✓</span>':'');card.appendChild(hdr);var pw2=mke('pw');pw2.style.marginTop='9px';pw2.innerHTML='<div class="pf" style="width:'+(done?100:0)+'%"></div>';card.appendChild(pw2);var btn=document.createElement('button');btn.className='hw-btn'+(done?' done':'');btn.textContent=done?'✓ Gelernt':'Ich kann es! ⭐';(function(hid,sid2,all,b){btn.onclick=function(){toggleP(hid,sid2,all,b)}})(hwId,sid,h.surahIds,btn);card.appendChild(btn);el.appendChild(card)});addSp(el);document.getElementById('detTitle').textContent=h.title}catch(e){document.getElementById('detContent').innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>'}}
-async function toggleP(hwId,sid,all,btn){var lsKey='prog_'+CU.uid+'_'+hwId;var pf=btn.closest('.hw-card').querySelector('.pf');var cached=JSON.parse(localStorage.getItem(lsKey)||'{"learnedSurahs":[]}');var ls=cached.learnedSurahs||[];var idx=ls.indexOf(sid);if(idx>=0){ls.splice(idx,1);btn.className='hw-btn';btn.textContent='Ich kann es! ⭐';if(pf)pf.style.width='0%';var b=btn.closest('.hw-card').querySelector('.badge-g');if(b)b.remove()}else{ls.push(sid);btn.className='hw-btn done';btn.textContent='✓ Gelernt';if(pf)pf.style.width='100%';dtoast('⭐ Maschallah!')}var lv=ls.reduce(function(s,id){var sr=sbid(id);return s+(sr?sr.v:0)},0);var tv=all.reduce(function(s,id){var sr=sbid(id);return s+(sr?sr.v:0)},0);cached.learnedSurahs=ls;cached.learnedCount=lv;cached.totalCount=tv;localStorage.setItem(lsKey,JSON.stringify(cached));try{await DB.collection('fortschritt').doc(CU.uid+'_'+hwId).set({learnedSurahs:ls,learnedCount:lv,totalCount:tv,studentId:CU.uid,hwId:hwId,updatedAt:FS.serverTimestamp()},{merge:true})}catch(e){console.warn('Firestore:',e.message)}}
 
+function doLogout(){if(confirm('Wirklich abmelden?')){FA.signOut();document.getElementById('dashOverlay').classList.remove('on');document.getElementById('detOverlay').classList.remove('on');closePanel();}}
+function openDash(){
+  closePanel();
+  document.getElementById('dashOverlay').classList.add('on');
+  document.getElementById('doAv').innerHTML=CR==='L'?'👨‍🏫':'🎓';
+  document.getElementById('doName').textContent=document.getElementById('uName').textContent;
+  document.getElementById('doRole').textContent=CR==='L'?'Lehrer-Dashboard':'Meine Übersicht';
+  document.getElementById('dashFab').style.display=CR==='L'?'flex':'none';
+  if(CR==='L')loadL();else loadS();
+}
+function closeDash(){document.getElementById('dashOverlay').classList.remove('on');}
+
+// ══════════════════════════════════════════
+// LEHRER
+// ══════════════════════════════════════════
+
+async function loadL(){
+  var el=document.getElementById('dashContent');el.innerHTML=dldr();
+  try{
+    var s=await DB.collection('klassen').where('teacherId','==',CU.uid).get();
+    if(s.empty){el.innerHTML='<div class="dempty"><div class="dei">📚</div><h3>Noch keine Klassen</h3><p>Tippe auf + um eine Klasse zu erstellen.</p></div>';return;}
+    el.innerHTML='';addSec(el,'Meine Klassen');
+    s.forEach(function(doc){
+      var d=doc.data(),c=mke('d-card');
+      c.innerHTML='<div class="d-cr"><div class="d-ci g">📚</div><div class="d-cb"><div class="d-ct">'+d.name+'</div><div class="d-cs">Code: <b>'+d.code+'</b></div></div><div class="d-ca">›</div></div>';
+      (function(id){c.onclick=function(){openKl(id);};})(doc.id);el.appendChild(c);
+    });
+    addSp(el);
+  }catch(e){el.innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>';}
+}
+
+async function createKl(){
+  var n=document.getElementById('iKN').value.trim();
+  if(!n){dtoast('❌ Name eingeben!');return;}
+  try{await DB.collection('klassen').add({name:n,code:gc(),teacherId:CU.uid,createdAt:FS.serverTimestamp()});document.getElementById('iKN').value='';closeM('mKl');dtoast('✅ Klasse erstellt!');loadL();}
+  catch(e){dtoast('❌ '+e.message);}
+}
+
+async function openKl(id){
+  curKlass=id;
+  openDet('Laden...','Klasse',function(){document.getElementById('detOverlay').classList.remove('on');});
+  try{
+    var kd=await DB.collection('klassen').doc(id).get();
+    if(!kd.exists){dtoast('Nicht gefunden!');return;}
+    var k=kd.data();
+    var res=await Promise.all([DB.collection('hausaufgaben').where('klassId','==',id).get(),DB.collection('klassen').doc(id).collection('members').get()]);
+    var hwSnap=res[0],memSnap=res[1];
+    var el=document.getElementById('detContent');el.innerHTML='';
+    // Code Box
+    var cb=mke('codebox');
+    cb.innerHTML='<div class="codelbl">Einladungscode für Schüler</div><div class="codeval">'+k.code+'</div><div class="codehint">Schüler geben diesen Code beim Registrieren ein</div>';
+    el.appendChild(cb);
+    // Schüler
+    addSec(el,'👥 Schüler ('+memSnap.size+')');
+    if(memSnap.empty){addNote(el,'Noch keine Schüler');}
+    else{
+      memSnap.forEach(function(m){
+        var md=m.data(),c=mke('d-card');
+        c.innerHTML='<div class="d-cr"><div class="d-ci nv">🎓</div><div class="d-cb"><div class="d-ct">'+md.name+'</div><div class="d-cs">'+(md.email||'')+'</div></div><div style="display:flex;gap:6px"><div class="d-ca">›</div></div></div>';
+        (function(sid,sname,kid){c.onclick=function(){openStudentDetail(sid,sname,kid);};})(m.id,md.name,id);
+        el.appendChild(c);
+      });
+    }
+    // Klassen-Hausaufgaben
+    addSec(el,'📝 Klassen-Hausaufgaben');
+    var ab=mke('');ab.style.padding='0 14px 8px';
+    var abtn=document.createElement('button');abtn.className='p-btn';abtn.style.marginTop='0';abtn.textContent='+ Hausaufgabe vergeben';abtn.onclick=openHWModal;ab.appendChild(abtn);el.appendChild(ab);
+    var hws=[];hwSnap.forEach(function(d){hws.push(d);});
+    hws.sort(function(a,b){return(b.data().createdAt&&b.data().createdAt.seconds||0)-(a.data().createdAt&&a.data().createdAt.seconds||0);});
+    if(!hws.length){addNote(el,'Noch keine Hausaufgaben');}
+    else{
+      hws.forEach(function(doc){
+        var d=doc.data(),names=(d.surahIds||[]).map(function(x){var s=sbid(x);return s?s.de:x;}).join(', ');
+        var exp=isExpired(d.deadline);
+        var c=mke('d-card');
+        c.style.opacity=exp?'0.7':'1';
+        c.innerHTML='<div class="d-cr"><div class="d-ci gd">📝</div><div class="d-cb"><div class="d-ct">'+d.title+(exp?' <span class="dlb over" style="font-size:10px">abgelaufen</span>':'')+'</div><div class="d-cs">'+names+'</div><div style="margin-top:4px">'+deadlineLabel(d.deadline)+'</div></div><div style="display:flex;align-items:center;gap:6px"><div class="d-ca">›</div><button class="del-btn" title="Löschen">🗑️</button></div></div>';
+        (function(did,kid){
+          c.querySelector('.d-ca').parentElement.querySelector('.del-btn').onclick=function(e){e.stopPropagation();deleteHW(did,kid,null);};
+          c.onclick=function(){openHWP(did,kid);};
+        })(doc.id,id);
+        el.appendChild(c);
+      });
+    }
+    addSp(el);
+    document.getElementById('detTitle').textContent=k.name;
+    document.getElementById('detSub').textContent='Klasse';
+  }catch(e){document.getElementById('detContent').innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>';}
+}
+
+// ── Schüler-Detail (Lehrer sieht Fortschritt + kann zuweisen) ──
+async function openStudentDetail(studentId,studentName,klassId){
+  openDet(studentName,'Schüler-Profil',function(){openKl(klassId);});
+  try{
+    // Hole alle Hausaufgaben der Klasse + individuelle Zuweisungen
+    var res=await Promise.all([
+      DB.collection('hausaufgaben').where('klassId','==',klassId).get(),
+      DB.collection('hausaufgaben').where('studentId','==',studentId).get()
+    ]);
+    var klassHW=res[0],studentHW=res[1];
+    var allHW=[];
+    klassHW.forEach(function(d){allHW.push({doc:d,type:'klasse'});});
+    studentHW.forEach(function(d){allHW.push({doc:d,type:'individual'});});
+
+    // Sammle alle Fortschrittsdaten
+    var progDocs=await Promise.all(allHW.map(function(hw){
+      return DB.collection('fortschritt').doc(studentId+'_'+hw.doc.id).get().catch(function(){return{exists:false,data:function(){return{};}}});
+    }));
+
+    // Kategoirisierung aller Suren
+    var allSurahs={learned:{},partial:{},none:{}};
+    allHW.forEach(function(hw,i){
+      var h=hw.doc.data();
+      var prog=progDocs[i].exists?progDocs[i].data():{};
+      var ls=prog.learnedSurahs||[];
+      var vp=prog.verseProgress||{};
+      (h.surahIds||[]).forEach(function(sid){
+        if(ls.indexOf(sid)>=0){allSurahs.learned[sid]={hwId:hw.doc.id,prog:prog};}
+        else if(vp[sid]&&vp[sid].length>0){allSurahs.partial[sid]={hwId:hw.doc.id,prog:prog,verses:vp[sid]};}
+        else{allSurahs.none[sid]={hwId:hw.doc.id,prog:prog};}
+      });
+    });
+
+    var el=document.getElementById('detContent');el.innerHTML='';
+
+    // Button: Zuweisung erstellen
+    var abtn=mke('');abtn.style.padding='14px 14px 4px';
+    var btn=document.createElement('button');
+    btn.className='p-btn';btn.style.marginTop='0';
+    btn.innerHTML='📋 Sure zuweisen';
+    (function(sid,sname,kid){btn.onclick=function(){openAssignModal(sid,sname,kid);};})(studentId,studentName,klassId);
+    abtn.appendChild(btn);el.appendChild(abtn);
+
+    // Bewertungs-Hausaufgaben
+    addSec(el,'📝 Hausaufgaben-Fortschritt');
+    if(!allHW.length){addNote(el,'Noch keine Hausaufgaben');}
+    else{
+      allHW.forEach(function(hw,i){
+        var h=hw.doc.data(),prog=progDocs[i].exists?progDocs[i].data():{};
+        var ls=prog.learnedSurahs||[];var cs=prog.confirmedSurahs||[];
+        var tot=(h.surahIds||[]).length;var done=ls.length;
+        var exp=isExpired(h.deadline);
+        var c=mke('d-card');
+        c.innerHTML='<div class="d-cr"><div class="d-ci '+(exp?'':'gd')+'">📝</div><div class="d-cb"><div class="d-ct">'+h.title+(hw.type==='individual'?' <span class="dlb ok" style="font-size:10px">Einzeln</span>':'')+(exp?' <span class="dlb over" style="font-size:10px">abgelaufen</span>':'')+'</div><div class="d-cs">'+done+'/'+tot+' Suren gelernt &middot; '+cs.length+' bestätigt</div><div style="margin-top:4px">'+deadlineLabel(h.deadline)+'</div></div><div class="d-ca">›</div></div>';
+        (function(hwId,hwData,pData){c.onclick=function(){openEval(studentId,studentName,hwId,hwData,pData);};})(hw.doc.id,h,prog);
+        el.appendChild(c);
+      });
+    }
+
+    // Lernstand-Übersicht
+    var lKeys=Object.keys(allSurahs.learned);
+    var pKeys=Object.keys(allSurahs.partial);
+    var nKeys=Object.keys(allSurahs.none);
+
+    if(lKeys.length){
+      addSec(el,'✅ Kann er/sie ('+ lKeys.length+')', 'var(--g)');
+      lKeys.forEach(function(sid){var s=sbid(parseInt(sid));if(!s)return;var c=mke('d-card');c.style.borderColor='var(--g)';c.innerHTML='<div class="d-cr"><div class="d-ci g" style="font-size:16px">✅</div><div class="d-cb"><div class="d-ct">'+s.ar+'</div><div class="d-cs">'+s.de+'</div></div></div>';el.appendChild(c);});
+    }
+    if(pKeys.length){
+      addSec(el,'⚠️ Teilweise ('+pKeys.length+')', '#b8860b');
+      pKeys.forEach(function(sid){var s=sbid(parseInt(sid));if(!s)return;var vDone=allSurahs.partial[sid].verses.length;var c=mke('d-card');c.style.borderColor='var(--gd)';c.innerHTML='<div class="d-cr"><div class="d-ci gd" style="font-size:16px">⚠️</div><div class="d-cb"><div class="d-ct">'+s.ar+'</div><div class="d-cs">'+s.de+' &middot; '+vDone+'/'+s.v+' Verse</div></div></div>';el.appendChild(c);});
+    }
+    if(nKeys.length){
+      addSec(el,'❌ Noch nicht gelernt ('+nKeys.length+')', 'var(--rd)');
+      nKeys.forEach(function(sid){var s=sbid(parseInt(sid));if(!s)return;var c=mke('d-card');c.innerHTML='<div class="d-cr"><div class="d-ci" style="background:#f0e0e0;font-size:16px">❌</div><div class="d-cb"><div class="d-ct">'+s.ar+'</div><div class="d-cs">'+s.de+'</div></div></div>';el.appendChild(c);});
+    }
+    addSp(el);
+  }catch(e){document.getElementById('detContent').innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>';}
+}
+
+// ── Einzelzuweisung Modal ──
+var assignTarget={studentId:null,studentName:null,klassId:null};
+function openAssignModal(studentId,studentName,klassId){
+  assignTarget={studentId:studentId,studentName:studentName,klassId:klassId};
+  selS=[];
+  var p=document.getElementById('picker');p.innerHTML='';
+  SURAHS_DB.forEach(function(s){
+    var d=document.createElement('div');d.className='pi';
+    d.innerHTML='<span class="pi-ar">'+s.ar+'</span><span class="pi-de">'+s.id+'. '+s.de+'</span>';
+    (function(id,el){d.onclick=function(){var i=selS.indexOf(id);if(i>=0){selS.splice(i,1);el.classList.remove('on');}else{selS.push(id);el.classList.add('on');}};})(s.id,d);
+    p.appendChild(d);
+  });
+  var dl=new Date();dl.setDate(dl.getDate()+7);
+  document.getElementById('iHWD').value=dl.toISOString().split('T')[0];
+  document.getElementById('iHWT').value='';
+  document.getElementById('iHWModalTitle').innerHTML='📋 Sure zuweisen an '+studentName;
+  openM('mHW');
+}
+
+async function createHW(){
+  var t=document.getElementById('iHWT').value.trim(),dv=document.getElementById('iHWD').value;
+  if(!t){dtoast('❌ Titel eingeben!');return;}
+  if(!selS.length){dtoast('❌ Sure auswählen!');return;}
+  if(!dv){dtoast('❌ Deadline wählen!');return;}
+  var data={title:t,surahIds:selS,deadline:firebase.firestore.Timestamp.fromDate(new Date(dv)),createdAt:FS.serverTimestamp(),teacherId:CU.uid};
+  // Klassen-HW oder Einzelzuweisung?
+  if(assignTarget.studentId){
+    data.studentId=assignTarget.studentId;
+    data.studentName=assignTarget.studentName;
+    data.klassId=assignTarget.klassId;
+  } else {
+    data.klassId=curKlass;
+  }
+  try{
+    await DB.collection('hausaufgaben').add(data);
+    closeM('mHW');
+    dtoast('✅ Hausaufgabe vergeben!');
+    assignTarget={studentId:null,studentName:null,klassId:null};
+    if(data.studentId) openStudentDetail(data.studentId,data.studentName,data.klassId);
+    else openKl(curKlass);
+  }catch(e){dtoast('❌ '+e.message);}
+}
+
+function openHWModal(){
+  assignTarget={studentId:null,studentName:null,klassId:null};
+  selS=[];
+  var p=document.getElementById('picker');p.innerHTML='';
+  SURAHS_DB.forEach(function(s){
+    var d=document.createElement('div');d.className='pi';
+    d.innerHTML='<span class="pi-ar">'+s.ar+'</span><span class="pi-de">'+s.id+'. '+s.de+'</span>';
+    (function(id,el){d.onclick=function(){var i=selS.indexOf(id);if(i>=0){selS.splice(i,1);el.classList.remove('on');}else{selS.push(id);el.classList.add('on');}};})(s.id,d);
+    p.appendChild(d);
+  });
+  var dl=new Date();dl.setDate(dl.getDate()+7);
+  document.getElementById('iHWD').value=dl.toISOString().split('T')[0];
+  document.getElementById('iHWT').value='';
+  document.getElementById('iHWModalTitle').innerHTML='📝 Hausaufgabe vergeben';
+  openM('mHW');
+}
+
+async function openHWP(hwId,klassId){
+  openDet('Laden...','Fortschritt',function(){openKl(klassId);});
+  try{
+    var res=await Promise.all([DB.collection('hausaufgaben').doc(hwId).get(),DB.collection('klassen').doc(klassId).collection('members').get(),DB.collection('fortschritt').where('hwId','==',hwId).get()]);
+    var hw=res[0],mem=res[1],prog=res[2];
+    var h=hw.data(),tv=(h.surahIds||[]).reduce(function(s,id){var sr=sbid(id);return s+(sr?sr.v:0);},0);
+    var pm={};prog.forEach(function(d){pm[d.data().studentId]=d.data();});
+    var el=document.getElementById('detContent');el.innerHTML='';
+    var dl2=mke('');dl2.style.padding='10px 14px 4px';dl2.innerHTML=deadlineLabel(h.deadline);el.appendChild(dl2);
+    addSec(el,'👥 Schüler (antippen = Bewertung)');
+    var tbl=mke('ptbl');
+    // Surah rows with remove buttons
+    var surahHeader=mke('d-sec');surahHeader.textContent='Suren in dieser Hausaufgabe';el.appendChild(surahHeader);
+    var surahList=mke('ecard');
+    (h.surahIds||[]).forEach(function(sid){
+      var s=sbid(sid);if(!s)return;
+      var row=mke('erow');
+      row.innerHTML='<div style="flex:1"><div class="ear">'+s.ar+'</div><div class="ede">'+s.id+'. '+s.de+'</div></div>';
+      var rmBtn=document.createElement('button');
+      rmBtn.style.cssText='height:28px;padding:0 10px;border-radius:10px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:rgba(224,48,64,.1);color:var(--rd)';
+      rmBtn.textContent='Entfernen';
+      (function(sid2,hid,kid){rmBtn.onclick=function(){removeSurahFromHW(hid,sid2,kid,null);};})(sid,hwId,klassId);
+      row.appendChild(rmBtn);surahList.appendChild(row);
+    });
+    el.appendChild(surahList);
+    addSec(el,'👥 Schüler (antippen = Bewertung)');
+    tbl.innerHTML='<div class="pr hd"><div class="pn">Name</div><div class="pbw">Fortschritt</div><div class="pv">Verse</div></div>';
+    if(mem.empty){tbl.innerHTML+='<div class="pr"><div class="pn" style="color:var(--dim)">Keine Schüler</div></div>';}
+    else{
+      mem.forEach(function(m){
+        var md=m.data(),p=pm[m.id],done=p?(p.learnedCount||0):0;
+        var partialV=0;
+        if(p&&p.verseProgress){Object.keys(p.verseProgress).forEach(function(k){partialV+=(p.verseProgress[k]||[]).length;});}
+        var conf=p?((p.confirmedSurahs||[]).length):0;
+        var pct=tv>0?Math.round((done+partialV/2)/tv*100):0,col=pct>=100?'var(--g2)':pct>=50?'var(--gd)':'#d0e0f0';
+        var row=mke('pr');
+        row.innerHTML='<div class="pn">'+md.name+'<br><span style="font-size:10px;color:var(--dim);font-weight:600">'+conf+' bestätigt</span></div><div class="pbw"><div class="pw"><div class="pf" style="width:'+pct+'%;background:'+col+'"></div></div></div><div class="pv">'+done+'/'+tv+'</div>';
+        (function(sid,sname,hid,hdata,pdata){row.onclick=function(){openEval(sid,sname,hid,hdata,pdata);};})(m.id,md.name,hwId,h,p||{});
+        tbl.appendChild(row);
+      });
+    }
+    el.appendChild(tbl);addSp(el);
+    document.getElementById('detTitle').textContent=h.title;
+    document.getElementById('detSub').textContent='Hausaufgabe &middot; Fortschritt';
+  }catch(e){document.getElementById('detContent').innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>';}
+}
+
+// ── Lehrer bewertet Schüler (inkl. Vers-Ebene) ──
+async function openEval(sid,sname,hwId,hw,progData){
+  var el=document.getElementById('detContent');el.innerHTML=dldr();
+  document.getElementById('detTitle').textContent=sname;
+  document.getElementById('detSub').textContent='Bewertung';
+  try{
+    var pd=await DB.collection('fortschritt').doc(sid+'_'+hwId).get();
+    var p=pd.exists?pd.data():{learnedSurahs:[],confirmedSurahs:[],verseProgress:{}};
+    var ls=p.learnedSurahs||[];var cs=p.confirmedSurahs||[];var vp=p.verseProgress||{};
+    el.innerHTML='';
+    var info=mke('ecard');
+    // Compute verse stats
+    var totalVDone=ls.reduce(function(s,id){var sr=sbid(id);return s+(sr?sr.v:0);},0);
+    var partialVDone=0;Object.keys(vp).forEach(function(k){partialVDone+=(vp[k]||[]).length;});
+    info.innerHTML='<div style="display:flex;align-items:center;gap:10px"><div style="width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#4a7fc1,var(--nv));color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center">🎓</div><div><div style="font-weight:800;font-size:15px">'+sname+'</div><div style="font-size:12px;color:var(--dim)">'+ls.length+' Suren ganz &middot; '+Object.keys(vp).length+' teilweise &middot; '+cs.length+' bestätigt</div></div></div>';
+    el.appendChild(info);
+    addSec(el,'Suren bewerten (📌 = Vers-Details)');
+    var card=mke('ecard');
+    (hw.surahIds||[]).forEach(function(sid2){
+      var s=sbid(sid2);if(!s)return;
+      var isL=ls.indexOf(sid2)>=0,isC=cs.indexOf(sid2)>=0;
+      var verseDone=(vp[sid2]||[]).length;var isTeilweise=!isL&&verseDone>0;
+      var row=mke('erow');
+      var dot=document.createElement('div');dot.className='edot '+(isC?'conf':isL?'done':isTeilweise?'partial':'empty');
+      row.appendChild(dot);
+      var info2=mke('');info2.style.flex='1';
+      var status=isC?'🟡 Bestätigt':isL?'🟢 Ganz gelernt':isTeilweise?('🟠 '+verseDone+'/'+s.v+' Verse'):'⚪ Nicht gelernt';
+      info2.innerHTML='<div class="ear">'+s.ar+'</div><div class="ede">'+s.id+'. '+s.de+' &middot; '+status+'</div>';
+      row.appendChild(info2);
+      // Verse-Detail Button
+      if(isTeilweise){
+        var vbtn=document.createElement('button');
+        vbtn.style.cssText='margin-right:6px;height:28px;padding:0 8px;border-radius:10px;border:none;cursor:pointer;font-size:11px;font-weight:700;background:var(--bg2);color:var(--dim)';
+        vbtn.textContent='Verse';
+        (function(sid3,vdone,total){vbtn.onclick=function(e){e.stopPropagation();showVerseDetails(el,sid3,vdone,total,vp[sid3]||[]);};})(sid2,verseDone,s.v);
+        row.appendChild(vbtn);
+      }
+      var btn=document.createElement('button');
+      btn.className='cbtn'+(isC?' conf':'');
+      btn.innerHTML=isC?'✓ Bestätigt':(isL?'Bestätigen':'Nicht gelernt');
+      if(!isL&&!isC&&!isTeilweise)btn.disabled=true;
+      if(isTeilweise&&!isC){btn.textContent='Teilw. bestät.';btn.style.background='linear-gradient(135deg,var(--gd),var(--og))';btn.style.color='#5a3a00';}
+      (function(sid3,b,dt){b.onclick=async function(){b.disabled=true;b.textContent='...';
+        try{
+          var ref=DB.collection('fortschritt').doc(sid+'_'+hwId);
+          var d2=await ref.get();var p2=d2.exists?d2.data():{};
+          var cs2=p2.confirmedSurahs||[];var i=cs2.indexOf(sid3);
+          if(i>=0){cs2.splice(i,1);b.className='cbtn';b.textContent='Bestätigen';dt.className='edot done';}
+          else{cs2.push(sid3);b.className='cbtn conf';b.innerHTML='✓ Bestätigt';dt.className='edot conf';}
+          await ref.set({confirmedSurahs:cs2,confirmedBy:CU.uid,confirmedAt:FS.serverTimestamp()},{merge:true});
+          dtoast(cs2.indexOf(sid3)>=0?'✅ Bestätigt!':'Aufgehoben');
+        }catch(e){dtoast('❌ '+e.message);}b.disabled=false;
+      };})(sid2,btn,dot);
+      row.appendChild(btn);card.appendChild(row);
+    });
+    el.appendChild(card);addSp(el);
+  }catch(e){document.getElementById('detContent').innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>';}
+}
+
+function showVerseDetails(container,surahId,verseDone,totalV,learnedVerses){
+  var existing=document.getElementById('verseDetail_'+surahId);
+  if(existing){existing.remove();return;}
+  var box=mke('');box.id='verseDetail_'+surahId;
+  box.style.cssText='background:var(--bg2);border-radius:12px;padding:12px;margin:4px 14px 8px;';
+  var s=sbid(surahId);
+  box.innerHTML='<div style="font-size:12px;font-weight:700;color:var(--dim);margin-bottom:8px">Verse von '+s.de+' ('+verseDone+'/'+totalV+' gelernt)</div>';
+  for(var i=1;i<=totalV;i++){
+    var isLearned=learnedVerses.indexOf(i)>=0;
+    var vrow=mke('');
+    vrow.style.cssText='display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--brd)';
+    vrow.innerHTML='<div style="width:26px;height:26px;border-radius:8px;background:'+(isLearned?'var(--g2)':'#d0dce4')+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:'+(isLearned?'#fff':'var(--dim)')+'">'+i+'</div><span style="font-size:13px;color:var(--dim)">Vers '+i+(isLearned?' ✅':'')+'</span>';
+    box.appendChild(vrow);
+  }
+  container.appendChild(box);
+}
+
+
+// ── Hausaufgabe löschen ──
+async function deleteHW(hwId,klassId,studentId){
+  if(!confirm('Hausaufgabe wirklich löschen?')) return;
+  try{
+    await DB.collection('hausaufgaben').doc(hwId).delete();
+    dtoast('🗑️ Hausaufgabe gelöscht');
+    document.getElementById('detOverlay').classList.remove('on');
+    if(studentId) openStudentDetail(studentId,'',klassId);
+    else openKl(klassId);
+  }catch(e){dtoast('❌ '+e.message);}
+}
+
+// ── Sure aus Hausaufgabe entfernen ──
+async function removeSurahFromHW(hwId,surahId,klassId,studentId){
+  try{
+    var doc=await DB.collection('hausaufgaben').doc(hwId).get();
+    if(!doc.exists) return;
+    var ids=(doc.data().surahIds||[]).filter(function(id){return id!==surahId;});
+    if(ids.length===0){
+      if(!confirm('Das war die letzte Sure. Hausaufgabe komplett löschen?')) return;
+      await DB.collection('hausaufgaben').doc(hwId).delete();
+      dtoast('🗑️ Hausaufgabe gelöscht');
+      document.getElementById('detOverlay').classList.remove('on');
+      if(studentId) openStudentDetail(studentId,'',klassId);
+      else openKl(klassId);
+    } else {
+      await DB.collection('hausaufgaben').doc(hwId).update({surahIds:ids});
+      dtoast('✅ Sure entfernt');
+      openHWP(hwId,klassId);
+    }
+  }catch(e){dtoast('❌ '+e.message);}
+}
+
+// ══════════════════════════════════════════
+// SCHÜLER
+// ══════════════════════════════════════════
+
+async function loadS(){
+  var el=document.getElementById('dashContent');el.innerHTML=dldr();
+  try{
+    var ms=await DB.collection('memberships').where('studentId','==',CU.uid).get();
+    if(ms.empty){el.innerHTML='<div class="dempty"><div class="dei">📭</div><h3>Noch keine Klasse</h3><p>Bitte mit dem Klassen-Code deines Lehrers registrieren.</p></div>';return;}
+    var klassIds=ms.docs.map(function(d){return d.data().klassId;});
+
+    // Alle Hausaufgaben laden (Klassen + individuelle)
+    var hwResults=await Promise.all(
+      klassIds.map(function(kid){return DB.collection('hausaufgaben').where('klassId','==',kid).get();}).concat(
+        [DB.collection('hausaufgaben').where('studentId','==',CU.uid).get()]
+      )
+    );
+    var allHW=[];
+    hwResults.forEach(function(snap){snap.forEach(function(doc){allHW.push(doc);});});
+    // Deduplicate
+    var seen={};allHW=allHW.filter(function(d){if(seen[d.id])return false;seen[d.id]=true;return true;});
+
+    if(!allHW.length){
+      el.innerHTML='<div class="dempty"><div class="dei">📭</div><h3>Noch keine Hausaufgaben</h3><p>Dein Lehrer hat noch keine Hausaufgaben vergeben.</p></div>';
+      return;
+    }
+
+    // Fortschrittsdaten laden
+    var progDocs=await Promise.all(allHW.map(function(hw){
+      return DB.collection('fortschritt').doc(CU.uid+'_'+hw.id).get().catch(function(){return{exists:false,data:function(){return{};},id:hw.id};});
+    }));
+
+    // Kategorisieren
+    var aktive=[],abgelaufen=[];
+    allHW.forEach(function(hw,i){
+      if(isExpired(hw.data().deadline)){abgelaufen.push({hw:hw,prog:progDocs[i]});}
+      else{aktive.push({hw:hw,prog:progDocs[i]});}
+    });
+
+    el.innerHTML='';
+
+    // ── Aktive Hausaufgaben ──
+    if(aktive.length){
+      aktive.forEach(function(item){
+        var h=item.hw.data(),kname=h.klassName||'Zuweisung';
+        addSec(el,(h.studentId?'📌 Einzelzuweisung':'📚 Hausaufgabe')+': '+h.title);
+        h.surahIds.forEach(function(sid){
+          var s=sbid(sid);if(!s)return;
+          var prog=item.prog.exists?item.prog.data():{};
+          var ls=prog.learnedSurahs||[];var vp=prog.verseProgress||{};
+          var isDone=ls.indexOf(sid)>=0;
+          var verseDone=(vp[sid]||[]).length;
+          var card=mke('hw-card');
+          card.innerHTML='<div class="hw-hdr"><div class="hw-num">'+s.id+'</div><div style="flex:1"><div class="hw-ar">'+s.ar+'</div><div class="hw-de">'+s.de+' &middot; '+s.v+' Verse</div></div>'+(isDone?'<span class="badge-g">✓</span>':'')+'</div><div class="pw" style="margin-top:9px"><div class="pf" style="width:'+(isDone?100:Math.round(verseDone/s.v*100))+'%"></div></div>';
+          // Buttons
+          var btnRow=mke('');btnRow.style.cssText='display:flex;gap:8px;margin-top:10px';
+          // "Ich kann es!" button
+          var mainBtn=document.createElement('button');mainBtn.className='hw-btn'+(isDone?' done':'');mainBtn.style.flex='1';mainBtn.style.marginTop='0';
+          mainBtn.innerHTML=isDone?'✓ Gelernt':'Ich kann es! ⭐';
+          (function(hid,sid2,all,b){mainBtn.onclick=function(){toggleSurahHW(hid,sid2,all,b);};})(item.hw.id,sid,h.surahIds,mainBtn);
+          btnRow.appendChild(mainBtn);
+          // "Verse" button
+          var verseBtn=document.createElement('button');
+          verseBtn.style.cssText='height:42px;padding:0 12px;border-radius:12px;border:none;cursor:pointer;font-size:13px;font-weight:700;background:var(--bg2);color:var(--dim);flex-shrink:0';
+          verseBtn.textContent='Verse ('+(verseDone>0?verseDone:0)+'/'+s.v+')';
+          (function(hid,sid2,vDone,total,b){verseBtn.onclick=function(){openVerseView(hid,sid2,total,b);};})(item.hw.id,sid,verseDone,s.v,verseBtn);
+          btnRow.appendChild(verseBtn);
+          card.appendChild(btnRow);
+          // Deadline
+          var dl2=document.createElement('div');dl2.style.marginTop='8px';dl2.innerHTML=deadlineLabel(h.deadline);
+          card.appendChild(dl2);
+          el.appendChild(card);
+        });
+      });
+    }
+
+    // ── Abgelaufene HW → 3 Kategorien ──
+    if(abgelaufen.length){
+      // Sammle alle Suren-Status
+      var kannesMap={},teilweiseMap={},kannesnichtMap={};
+      abgelaufen.forEach(function(item){
+        var h=item.hw.data();var prog=item.prog.exists?item.prog.data():{};
+        var ls=prog.learnedSurahs||[];var vp=prog.verseProgress||{};
+        (h.surahIds||[]).forEach(function(sid){
+          if(ls.indexOf(sid)>=0){kannesMap[sid]={hwTitle:h.title,prog:prog};}
+          else if(vp[sid]&&vp[sid].length>0){teilweiseMap[sid]={hwTitle:h.title,prog:prog,hwId:item.hw.id,verses:vp[sid]};}
+          else{kannesnichtMap[sid]={hwTitle:h.title,prog:prog,hwId:item.hw.id};}
+        });
+      });
+      var lKeys=Object.keys(kannesMap),pKeys=Object.keys(teilweiseMap),nKeys=Object.keys(kannesnichtMap);
+
+      if(lKeys.length){
+        addSec(el,'✅ Das kann ich ('+lKeys.length+')', 'var(--g)');
+        lKeys.forEach(function(sid){
+          var s=sbid(parseInt(sid));if(!s)return;
+          var c=mke('hw-card');c.style.borderLeft='4px solid var(--g)';
+          c.innerHTML='<div class="hw-hdr"><div class="hw-num" style="background:linear-gradient(135deg,var(--g2),var(--g))">'+s.id+'</div><div style="flex:1"><div class="hw-ar">'+s.ar+'</div><div class="hw-de">'+s.de+'</div></div><span class="badge-g">✓ Gelernt</span></div>';
+          el.appendChild(c);
+        });
+      }
+
+      if(pKeys.length){
+        addSec(el,'⚠️ Das kann ich teilweise ('+pKeys.length+')', '#9a7a00');
+        pKeys.forEach(function(sid){
+          var s=sbid(parseInt(sid));if(!s)return;
+          var hwId=teilweiseMap[sid].hwId;var verseDone=teilweiseMap[sid].verses.length;
+          var pct=Math.round(verseDone/s.v*100);
+          var c=mke('hw-card');c.style.borderLeft='4px solid var(--gd)';
+          c.innerHTML='<div class="hw-hdr"><div class="hw-num" style="background:linear-gradient(135deg,var(--gd),var(--og));color:#5a3a00">'+s.id+'</div><div style="flex:1"><div class="hw-ar">'+s.ar+'</div><div class="hw-de">'+s.de+' &middot; '+verseDone+'/'+s.v+' Verse ('+pct+'%)</div></div></div><div class="pw" style="margin-top:9px"><div class="pf" style="width:'+pct+'%"></div></div>';
+          var vbtn=document.createElement('button');vbtn.className='hw-btn';vbtn.style.marginTop='10px';vbtn.textContent='Verse einzeln lernen';
+          (function(hid,sid2,total,b){vbtn.onclick=function(){openVerseView(hid,sid2,total,b);};})(hwId,parseInt(sid),s.v,vbtn);
+          c.appendChild(vbtn);el.appendChild(c);
+        });
+      }
+
+      if(nKeys.length){
+        addSec(el,'❌ Das kann ich nicht ('+nKeys.length+')', 'var(--rd)');
+        nKeys.forEach(function(sid){
+          var s=sbid(parseInt(sid));if(!s)return;
+          var hwId=kannesnichtMap[sid].hwId;
+          var c=mke('hw-card');c.style.borderLeft='4px solid #e0a0a0';c.style.opacity='0.8';
+          c.innerHTML='<div class="hw-hdr"><div class="hw-num" style="background:linear-gradient(135deg,#e08080,var(--rd))">'+s.id+'</div><div style="flex:1"><div class="hw-ar">'+s.ar+'</div><div class="hw-de">'+s.de+' &middot; 0/'+s.v+' Verse</div></div></div>';
+          var vbtn=document.createElement('button');vbtn.className='hw-btn';vbtn.style.marginTop='10px';vbtn.innerHTML='💪 Jetzt lernen';
+          (function(hid,sid2,total,b){vbtn.onclick=function(){openVerseView(hid,sid2,total,b);};})(hwId,parseInt(sid),s.v,vbtn);
+          c.appendChild(vbtn);el.appendChild(c);
+        });
+      }
+    }
+    addSp(el);
+  }catch(e){el.innerHTML='<div class="dempty"><div class="dei">⚠️</div><h3>Fehler</h3><p>'+e.message+'</p></div>';}
+}
+
+// ── Sure komplett als gelernt markieren ──
+async function toggleSurahHW(hwId,surahId,allSurahIds,btn){
+  var lsKey='prog_'+CU.uid+'_'+hwId;
+  var cached=JSON.parse(localStorage.getItem(lsKey)||'{"learnedSurahs":[],"verseProgress":{}}');
+  var ls=cached.learnedSurahs||[];var idx=ls.indexOf(surahId);
+  var pf=btn.parentElement.previousElementSibling;
+  if(idx>=0){
+    ls.splice(idx,1);btn.className='hw-btn';btn.innerHTML='Ich kann es! ⭐';
+    if(pf&&pf.querySelector)pf.querySelector('.pf').style.width='0%';
+  }else{
+    ls.push(surahId);btn.className='hw-btn done';btn.innerHTML='✓ Gelernt';
+    if(pf&&pf.querySelector)pf.querySelector('.pf').style.width='100%';
+    dtoast('⭐ Maschallah!');
+  }
+  var lv=ls.reduce(function(s,id){var sr=sbid(id);return s+(sr?sr.v:0);},0);
+  var tv=allSurahIds.reduce(function(s,id){var sr=sbid(id);return s+(sr?sr.v:0);},0);
+  cached.learnedSurahs=ls;cached.learnedCount=lv;cached.totalCount=tv;
+  localStorage.setItem(lsKey,JSON.stringify(cached));
+  try{
+    await DB.collection('fortschritt').doc(CU.uid+'_'+hwId).set(
+      {learnedSurahs:ls,learnedCount:lv,totalCount:tv,studentId:CU.uid,hwId:hwId,updatedAt:FS.serverTimestamp()},{merge:true});
+  }catch(e){console.warn('Firestore:',e.message);}
+}
+
+// ── Einzelne Verse lernen ──
+async function openVerseView(hwId,surahId,totalVerses,triggerBtn){
+  // Lade aktuellen Fortschritt
+  var lsKey='prog_'+CU.uid+'_'+hwId;
+  var cached=JSON.parse(localStorage.getItem(lsKey)||'{"learnedSurahs":[],"verseProgress":{}}');
+  var vp=cached.verseProgress||{};var learnedVerses=vp[surahId]||[];
+  var s=sbid(surahId);if(!s)return;
+
+  // Erstelle Vers-Overlay direkt unterhalb des Buttons
+  var existing=document.getElementById('verseOverlay_'+hwId+'_'+surahId);
+  if(existing){existing.remove();triggerBtn.textContent='Verse ('+learnedVerses.length+'/'+s.v+')';return;}
+
+  var box=mke('verse-box');box.id='verseOverlay_'+hwId+'_'+surahId;
+  box.style.cssText='background:var(--bg2);border-radius:14px;padding:14px;margin-top:10px;border:2px solid var(--brd2)';
+  box.innerHTML='<div style="font-size:12px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">'+s.de+' &middot; Einzelne Verse</div>';
+
+  for(var i=1;i<=totalVerses;i++){
+    var isLearned=learnedVerses.indexOf(i)>=0;
+    var vrow=mke('');vrow.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--brd)';
+    var numBadge=mke('');numBadge.style.cssText='width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;cursor:pointer;transition:.15s;background:'+(isLearned?'linear-gradient(135deg,var(--g2),var(--g))':'var(--bg2)')+';color:'+(isLearned?'#fff':'var(--dim)')+'';
+    numBadge.textContent=i;
+    var label=document.createElement('span');label.style.cssText='flex:1;font-size:14px;font-weight:700;color:var(--dim)';label.innerHTML='Vers '+i+(isLearned?' ✓':'');
+    var vBtn=document.createElement('button');
+    vBtn.style.cssText='height:30px;padding:0 10px;border-radius:10px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:'+(isLearned?'linear-gradient(135deg,var(--gd),var(--og))':'linear-gradient(135deg,var(--g2),var(--g))')+';color:'+(isLearned?'#5a3a00':'#fff');
+    vBtn.innerHTML=isLearned?'✓ Gelernt':'Lernen';
+    (function(vn,nb,lbl,vb,hid,sid){
+      vb.onclick=async function(){
+        var k='prog_'+CU.uid+'_'+hid;
+        var c2=JSON.parse(localStorage.getItem(k)||'{"learnedSurahs":[],"verseProgress":{}}');
+        var vp2=c2.verseProgress||{};var lv2=vp2[sid]||[];
+        var vi=lv2.indexOf(vn);
+        if(vi>=0){lv2.splice(vi,1);nb.style.background='var(--bg2)';nb.style.color='var(--dim)';lbl.textContent='Vers '+vn;vb.style.background='linear-gradient(135deg,var(--g2),var(--g))';vb.style.color='#fff';vb.textContent='Lernen';}
+        else{lv2.push(vn);nb.style.background='linear-gradient(135deg,var(--g2),var(--g))';nb.style.color='#fff';lbl.innerHTML='Vers '+vn+' ✓';vb.style.background='linear-gradient(135deg,var(--gd),var(--og))';vb.style.color='#5a3a00';vb.innerHTML='✓ Gelernt';dtoast('Maschallah! Vers '+vn+' gelernt!');}
+        vp2[sid]=lv2;c2.verseProgress=vp2;localStorage.setItem(k,JSON.stringify(c2));
+        triggerBtn.textContent='Verse ('+lv2.length+'/'+s.v+')';
+        try{
+          await DB.collection('fortschritt').doc(CU.uid+'_'+hid).set(
+            {verseProgress:vp2,studentId:CU.uid,hwId:hid,updatedAt:FS.serverTimestamp()},{merge:true});
+        }catch(e){console.warn('Firestore verse:',e.message);}
+      };
+    })(i,numBadge,label,vBtn,hwId,surahId);
+    vrow.appendChild(numBadge);vrow.appendChild(label);vrow.appendChild(vBtn);box.appendChild(vrow);
+  }
+  // Close button
+  var cBtn=document.createElement('button');cBtn.style.cssText='width:100%;margin-top:12px;padding:10px;border-radius:12px;border:none;cursor:pointer;font-size:13px;font-weight:700;background:var(--brd);color:var(--dim)';
+  cBtn.innerHTML='✕ Schließen';
+  cBtn.onclick=function(){box.remove();triggerBtn.textContent='Verse ('+learnedVerses.length+'/'+s.v+')';};
+  box.appendChild(cBtn);
+  triggerBtn.parentElement.after(box);
+}
 
 </script>
 </body>
